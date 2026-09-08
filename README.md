@@ -98,7 +98,10 @@ failures are silent.** Most surprises when porting from Omarchy trace back to it
 | `wlr-data-control` / `ext-data-control` | `wl-paste --watch`, so cliphist / clipman / clipse / `elephant-clipboard` | a GNOME Shell extension (GPaste) |
 
 `docs/decisions.md` has the full reasoning, including several settings that look
-redundant but encode a finding.
+redundant but encode a finding. `docs/troubleshooting.md` covers the symptoms
+that come up most — links opening in a text editor, an empty clipboard, a
+keybinding that does nothing, and why a stale terminal is the first thing to rule
+out.
 
 ## What this is not
 

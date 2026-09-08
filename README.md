@@ -100,4 +100,12 @@ for Ubuntu noble.
 
 ## License
 
-TODO — pick one before publishing.
+[MIT](LICENSE).
+
+The upstream projects this borrows from have their own licenses: check
+[Omabuntu](https://github.com/omakasui/omabuntu),
+[Omarchy](https://github.com/omacom/omarchy),
+[Walker](https://github.com/abenz1267/walker) and
+[Elephant](https://github.com/abenz1267/elephant) before redistributing anything
+of theirs. The Walker theme here is adapted from Omabuntu's `omakub-default`, and
+`item_symbols*.xml` are Walker's own defaults.

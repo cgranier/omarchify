@@ -14,6 +14,16 @@
 #      Harmless here: detectDarkMode() asks the portal first and only falls back
 #      to the Qt API, and live updates arrive over the portal's SettingChanged.
 #
+# KNOWN ISSUE on Qt 6.4 (Ubuntu 24.04): under the native Qt Wayland plugin the
+# window ignores its requested size and fills the work area, then saves that size
+# on exit — so it never "remembers" a smaller one. QT_SCALE_FACTOR and
+# QT_ENABLE_HIGHDPI_SCALING make no difference, so it is not DPI. The same binary
+# under XWayland honours the size exactly. The installed launcher therefore sets
+# QT_QPA_PLATFORM=xcb. Untested on Qt >= 6.5, where it may not occur at all.
+#
+# If you just want a Markdown editor on GNOME, Apostrophe is a lot less work:
+#   flatpak install --user flathub org.gnome.gitlab.somas.Apostrophe
+#
 #   sudo install/60-omawrite.sh    # dependencies
 #   install/60-omawrite.sh         # clone, patch if needed, build, install
 set -euo pipefail
@@ -56,7 +66,9 @@ make -j"$(nproc)"
 install -Dm755 omawrite ~/.local/bin/omawrite
 install -Dm644 pkgbuild/omawrite.svg ~/.local/share/icons/hicolor/scalable/apps/omawrite.svg
 # Exec must be absolute: ~/.local/bin is not in the GNOME session PATH.
-sed "s|^Exec=omawrite %f|Exec=$HOME/.local/bin/omawrite %f|" \
+# Exec must be absolute (~/.local/bin is not in the GNOME session PATH), and
+# forces XWayland — see the KNOWN ISSUE at the top of this file.
+sed "s|^Exec=omawrite %f|Exec=env QT_QPA_PLATFORM=xcb $HOME/.local/bin/omawrite %f|" \
   pkgbuild/omawrite.desktop > ~/.local/share/applications/omawrite.desktop
 update-desktop-database ~/.local/share/applications 2>/dev/null || true
 gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor 2>/dev/null || true

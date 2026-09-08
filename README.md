@@ -59,7 +59,11 @@ install/60-omawrite.sh         # clone, patch if needed, build, install
 ```
 
 It applies `patches/omawrite-qt6.4-compat.patch` automatically when Qt is older
-than 6.5, as on Ubuntu 24.04. See the script's header for why.
+than 6.5, as on Ubuntu 24.04. **Read the script's header first** — on Qt 6.4 the
+window also mis-sizes under the native Wayland plugin, so the launcher forces
+XWayland. If you only want a Markdown editor rather than this specific one,
+`flatpak install --user flathub org.gnome.gitlab.somas.Apostrophe` is far less
+work.
 
 Steps are independent — read `install/` and run only what you want. Nothing
 touches your existing dotfiles; configs are symlinked from this repo into

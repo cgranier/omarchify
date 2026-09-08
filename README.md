@@ -25,6 +25,7 @@ desktop they otherwise keep as-is.
 | `Shift+Super+B`, `Shift+Super+F` | browser, file manager |
 | `Super+Ctrl+Shift+A` | your default coding agent in a terminal |
 | `Ctrl+Print` | screenshot |
+| `Super+Shift+W` | Omawrite, if you built it (see below) |
 
 Plus command-line helpers: `omarchify-webapp-install` (turn a site into a real
 app launcher), `omarchify-transcode` (pictures and video via a Walker file
@@ -47,6 +48,18 @@ cd omarchify
 
 Then log out and back in, so the Walker autostart entry and the GPaste extension
 load.
+
+`install/60-omawrite.sh` is optional and not run by `install.sh` — it builds
+[Omawrite](https://github.com/omacom/omawrite), Omarchy's Markdown writing app,
+which ships as an Arch package only:
+
+```bash
+sudo install/60-omawrite.sh    # Qt6 dependencies
+install/60-omawrite.sh         # clone, patch if needed, build, install
+```
+
+It applies `patches/omawrite-qt6.4-compat.patch` automatically when Qt is older
+than 6.5, as on Ubuntu 24.04. See the script's header for why.
 
 Steps are independent — read `install/` and run only what you want. Nothing
 touches your existing dotfiles; configs are symlinked from this repo into

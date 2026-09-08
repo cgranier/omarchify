@@ -1,0 +1,67 @@
+#!/bin/bash
+# Create a desktop launcher that opens a site as its own app window.
+# Adapted from omarchy-webapp-install. `gum` is optional here (it is only in the
+# omakasui repo, which our apt pinning holds back), so arguments are the norm.
+#
+#   omarchify-webapp-install <name> <url> [icon-url-or-filename]
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+ICON_DIR="$HOME/.local/share/applications/icons"
+DESKTOP_DIR="$HOME/.local/share/applications"
+
+if (( $# < 2 )); then
+  if command -v gum >/dev/null 2>&1; then
+    APP_NAME=$(gum input --prompt "Name> " --placeholder "My favorite web app")
+    APP_URL=$(gum input --prompt "URL> "  --placeholder "https://example.com")
+  else
+    echo "usage: omarchify-webapp-install <name> <url> [icon-url-or-filename]" >&2
+    exit 1
+  fi
+  ICON_REF=""
+else
+  APP_NAME="$1"; APP_URL="$2"; ICON_REF="${3:-}"
+fi
+
+[[ -n $APP_NAME && -n $APP_URL ]] || { echo "Name and URL are required." >&2; exit 1; }
+[[ $APP_URL =~ ^[a-zA-Z][a-zA-Z0-9+.-]*: ]] || APP_URL="https://$APP_URL"
+
+mkdir -p "$ICON_DIR" "$DESKTOP_DIR"
+
+# Resolve the icon: explicit URL, explicit local filename, or auto favicon.
+[[ -n $ICON_REF ]] || ICON_REF="https://www.google.com/s2/favicons?domain=${APP_URL}&sz=128"
+if [[ $ICON_REF =~ ^https?:// ]]; then
+  ICON_PATH="$ICON_DIR/$APP_NAME.png"
+  if ! curl -fsSL -o "$ICON_PATH" "$ICON_REF" 2>/dev/null || [[ ! -s $ICON_PATH ]]; then
+    # Plenty of sites have no favicon; fall back to a themed icon rather than aborting.
+    rm -f "$ICON_PATH"
+    ICON_PATH="web-browser"
+    echo "note: no favicon for this site; using the generic web-browser icon." >&2
+    echo "      pass an icon URL or filename as the 3rd argument to override." >&2
+  fi
+else
+  ICON_PATH="$ICON_DIR/$ICON_REF"
+fi
+
+# ~/.local/bin is NOT in the GNOME session PATH, so Exec= must be absolute.
+LAUNCHER=$(command -v omarchify-launch-webapp || echo "$HOME/.local/bin/omarchify-launch-webapp")
+[[ -x $LAUNCHER ]] || { echo "omarchify-launch-webapp not found or not executable at $LAUNCHER" >&2; exit 1; }
+
+DESKTOP_FILE="$DESKTOP_DIR/$APP_NAME.desktop"
+cat > "$DESKTOP_FILE" <<DESKTOP
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=$APP_NAME
+Comment=$APP_NAME web app
+Exec=$LAUNCHER $APP_URL
+Icon=$ICON_PATH
+Terminal=false
+StartupNotify=true
+DESKTOP
+
+command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
+echo "Installed '$APP_NAME'. It will appear in Walker (Super+Space) and the GNOME app grid."

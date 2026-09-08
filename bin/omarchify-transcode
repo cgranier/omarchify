@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Transcode a picture or video for sharing. Adapted from omakub-transcode:
+# omakub-menu-file/-select become the omarchify equivalents, and
+# omakub-notification-send becomes notify-send.
+#
+#   omarchify-transcode [--path DIR] [input] [format] [resolution]
+#
+# Formats     pictures: jpg png      videos: mp4 gif
+# Resolutions pictures: high medium low   videos: 4k 1080p 720p
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+set -euo pipefail
+
+note() { notify-send "Omarchify" "$1" 2>/dev/null || true; echo "$1"; }
+
+usage() { sed -n '3,10p' "$(readlink -f "$0")" | sed 's/^# \{0,1\}//'; }
+
+media_type() {
+  case "$(file -b --mime-type "$1")" in
+    image/*) echo picture ;;
+    video/*) echo video ;;
+    *) echo "Unsupported file type: $(file -b --mime-type "$1")" >&2; return 1 ;;
+  esac
+}
+
+output_path() {
+  local dir base stem
+  dir=$(dirname -- "$1"); base=$(basename -- "$1"); stem="${base%.*}"
+  printf '%s/%s-%s.%s' "$dir" "$stem" "$3" "$2"
+}
+
+transcode_picture() {
+  local input=$1 format=$2 resolution=$3 output=$4 resize
+  case $resolution in
+    high) resize='3160x>' ;; medium) resize='2160x>' ;; low) resize='1080x>' ;;
+    *) echo "Invalid picture resolution: $resolution" >&2; return 1 ;;
+  esac
+  case $format in
+    jpg) convert "$input" -resize "$resize" -quality 85 -strip "$output" ;;
+    png) convert "$input" -resize "$resize" -strip \
+           -define png:compression-filter=5 -define png:compression-level=9 \
+           -define png:compression-strategy=1 -define png:exclude-chunk=all "$output" ;;
+    *) echo "Invalid picture format: $format" >&2; return 1 ;;
+  esac
+}
+
+transcode_video() {
+  local input=$1 format=$2 resolution=$3 output=$4 scale
+  case $resolution in
+    4k) scale='scale=-2:2160' ;; 1080p) scale='scale=-2:1080' ;; 720p) scale='scale=-2:720' ;;
+    *) echo "Invalid video resolution: $resolution" >&2; return 1 ;;
+  esac
+  case $format in
+    mp4) if [[ $resolution == "4k" ]]; then
+           ffmpeg -i "$input" -vf "$scale" -c:v libx265 -preset slow -crf 24 -c:a aac -b:a 192k "$output"
+         else
+           ffmpeg -i "$input" -vf "$scale" -c:v libx264 -preset fast -crf 23 -c:a copy "$output"
+         fi ;;
+    gif) ffmpeg -i "$input" -vf "fps=10,$scale:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" "$output" ;;
+    *) echo "Invalid video format: $format" >&2; return 1 ;;
+  esac
+}
+
+main() {
+  local input="" format="" resolution="" search_path="" positional=()
+  while (( $# > 0 )); do
+    case $1 in
+      --path) shift; [[ $# -gt 0 ]] || { echo "Missing value for --path" >&2; return 2; }; search_path=$1 ;;
+      -h|--help) usage; return 0 ;;
+      --) shift; positional+=("$@"); break ;;
+      --*) echo "Unknown option: $1" >&2; usage >&2; return 2 ;;
+      *) positional+=("$1") ;;
+    esac
+    shift
+  done
+
+  input=${positional[0]:-}; format=${positional[1]:-}; resolution=${positional[2]:-}
+  search_path=${search_path:-$HOME/Pictures:$HOME/Videos:$HOME/Downloads}
+
+  if [[ -z $input ]]; then
+    if ! input=$(omarchify-menu-file "Transcode picture or video" "$search_path" \
+      "jpg jpeg png webp gif heic avif mp4 mov m4v mkv webm avi"); then
+      note "No pictures or videos found in ${search_path//:/, }"
+      return 1
+    fi
+  fi
+  [[ -n $input ]] || return 1
+  [[ -f $input ]] || { echo "File not found: $input" >&2; return 1; }
+
+  local type; type=$(media_type "$input")
+
+  if [[ -z $format ]]; then
+    if [[ $type == "picture" ]]; then format=$(omarchify-menu-select "Select format" jpg png)
+    else format=$(omarchify-menu-select "Select format" mp4 gif); fi
+  fi
+  [[ -n $format ]] || return 1
+
+  if [[ -z $resolution ]]; then
+    if [[ $type == "picture" ]]; then resolution=$(omarchify-menu-select "Select resolution" high medium low)
+    else resolution=$(omarchify-menu-select "Select resolution" 4k 1080p 720p); fi
+  fi
+  [[ -n $resolution ]] || return 1
+
+  local output; output=$(output_path "$input" "$format" "$resolution")
+
+  note "Transcoding $(basename -- "$input") to $format ($resolution)…"
+  if [[ $type == "video" ]]; then
+    transcode_video "$input" "$format" "$resolution" "$output"
+  else
+    transcode_picture "$input" "$format" "$resolution" "$output"
+  fi
+
+  # wl-copy forks to serve the selection and inherits stdout/stderr; without
+  # redirecting them it holds the caller's pipe open and any pipeline hangs.
+  printf 'file://%s\n' "$(realpath -- "$output")" \
+    | wl-copy --type text/uri-list >/dev/null 2>&1
+  note "Saved $(basename -- "$output") and copied to clipboard."
+}
+
+main "$@"

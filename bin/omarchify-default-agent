@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Get or set the default coding agent, like `omarchy default agent`.
+#   omarchify-default-agent          # print current
+#   omarchify-default-agent claude   # set
+#   omarchify-default-agent --list   # what is installed
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+set -euo pipefail
+
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/omarchify/agent"
+KNOWN=(claude codex opencode copilot)
+
+case "${1:-}" in
+  "")       mkdir -p "$(dirname "$CONF")"; cat "$CONF" 2>/dev/null || echo claude ;;
+  --list)   for a in "${KNOWN[@]}"; do printf '%-10s %s\n' "$a" "$(command -v "$a" || echo '- not installed')"; done ;;
+  *)        command -v "$1" >/dev/null || { echo "not installed: $1" >&2; exit 1; }
+            mkdir -p "$(dirname "$CONF")"; printf '%s\n' "$1" > "$CONF"; echo "default agent: $1" ;;
+esac

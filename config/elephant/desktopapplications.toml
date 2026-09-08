@@ -1,0 +1,3 @@
+show_actions = false      # from Omabuntu
+only_search_title = false # Walker default: also match exec/keywords
+history = true            # Walker default: rank by launch frequency

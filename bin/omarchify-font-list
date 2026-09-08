@@ -1,0 +1,7 @@
+#!/bin/bash
+# List available monospace font families.
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+fc-list :spacing=100 -f "%{family[0]}\n" | grep -viE 'emoji|signwriting' | sort -u

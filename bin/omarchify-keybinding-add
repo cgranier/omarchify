@@ -1,0 +1,48 @@
+#!/bin/bash
+# Add a GNOME custom keybinding, idempotently.
+#
+#   omarchify-keybinding-add <name> <command> <binding> [slug]
+#
+# Adapted from omakub-gnome-keybinding-add with two changes:
+#   * named slugs (…/custom-keybindings/walker/) instead of custom0, custom1…
+#     so re-running updates in place and the dconf tree is readable;
+#   * duplicate detection scans EVERY registered path, named or numeric, not
+#     just /custom[0-9]+/ — the upstream regex misses named slugs entirely.
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+NAME=${1:?usage: omarchify-keybinding-add <name> <command> <binding> [slug]}
+COMMAND=${2:?}; BINDING=${3:?}
+SLUG=${4:-$(echo "$NAME" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')}
+
+SCHEMA=org.gnome.settings-daemon.plugins.media-keys
+BASE=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings
+MINE="$BASE/$SLUG/"
+
+mapfile -t paths < <(gsettings get "$SCHEMA" custom-keybindings \
+  | grep -o "'[^']*'" | tr -d "'" || true)
+
+# Drop any other entry that already owns this key sequence.
+keep=()
+for p in "${paths[@]}"; do
+  [[ $p == "$MINE" ]] && continue
+  existing=$(gsettings get "$SCHEMA.custom-keybinding:$p" binding 2>/dev/null | tr -d "'" || true)
+  if [[ $existing == "$BINDING" ]]; then
+    echo "note: $BINDING was bound at $p — removing that entry." >&2
+    for k in name command binding; do gsettings reset "$SCHEMA.custom-keybinding:$p" "$k" 2>/dev/null || true; done
+    continue
+  fi
+  keep+=("$p")
+done
+keep+=("$MINE")
+
+list=$(printf "'%s', " "${keep[@]}"); list="[${list%, }]"
+gsettings set "$SCHEMA" custom-keybindings "$list"
+
+gsettings set "$SCHEMA.custom-keybinding:$MINE" name    "$NAME"
+gsettings set "$SCHEMA.custom-keybinding:$MINE" command "$COMMAND"
+gsettings set "$SCHEMA.custom-keybinding:$MINE" binding "$BINDING"
+echo "bound $BINDING -> $COMMAND  ($SLUG)"

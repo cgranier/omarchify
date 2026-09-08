@@ -1,0 +1,4 @@
+# Copy to `personal` (gitignored) and edit. Compose key is Right Alt by default.
+# Type: Compose, then the sequence.
+<Multi_key> <space> <n> : "Your Name"
+<Multi_key> <space> <e> : "you@example.com"

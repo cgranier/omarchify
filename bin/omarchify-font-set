@@ -1,0 +1,32 @@
+#!/bin/bash
+# Set the monospace font across Alacritty and the GNOME interface.
+#   omarchify-font-set "JetBrainsMono Nerd Font"
+#
+# Adapted from omakub-font-set: also updates GNOME's monospace-font-name, which
+# the original leaves alone (it targets terminals only). Alacritty's config has
+# four family= lines (normal/bold/italic/bold_italic); all are updated.
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+font=${1:?usage: omarchify-font-set <font-family>   (see omarchify-font-list)}
+
+fc-list :spacing=100 -f "%{family[0]}\n" | grep -qixF "$font" || {
+  echo "No monospace font named '$font'. Try: omarchify-font-list" >&2; exit 1; }
+
+if [[ -f ~/.config/alacritty/alacritty.toml ]]; then
+  sed -i "s/^family = \".*\"$/family = \"$font\"/" ~/.config/alacritty/alacritty.toml
+  echo "alacritty: $(grep -c "^family = \"$font\"" ~/.config/alacritty/alacritty.toml) family entries updated"
+fi
+
+if command -v gsettings >/dev/null 2>&1; then
+  cur=$(gsettings get org.gnome.desktop.interface monospace-font-name | tr -d "'")
+  size=${cur##* }                       # trailing point size
+  [[ $size =~ ^[0-9]+$ ]] || size=12
+  gsettings set org.gnome.desktop.interface monospace-font-name "$font $size"
+  echo "gnome:     monospace-font-name = $font $size"
+fi
+
+echo "Alacritty reloads live (live_config_reload = true); restart other apps."

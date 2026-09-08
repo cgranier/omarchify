@@ -1,0 +1,21 @@
+/* Walker palette.
+ *
+ * Omabuntu's style.css imports this from Omakub's live-theme engine, which
+ * regenerates it per theme. Omarchify doesn't carry that engine, so this is a
+ * static file — edit it to match your terminal.
+ *
+ * The mapping is Omabuntu's walker.css.tpl:
+ *   background, base   <- your terminal's background
+ *   foreground, text   <- your terminal's foreground
+ *   border             <- foreground (their choice; try a dimmer colour if stark)
+ *   selected-text      <- your accent colour
+ *
+ * Default below is neutral dark. For example, to match Alacritty's marine_dark:
+ *   background/base #002221, foreground/text/border #e6f8f8, selected #00b6b6
+ */
+@define-color background    #1e1e1e;
+@define-color base          #1e1e1e;
+@define-color foreground    #deddda;
+@define-color text          #deddda;
+@define-color border        #deddda;
+@define-color selected-text #e95420;

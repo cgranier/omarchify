@@ -1,0 +1,29 @@
+#!/bin/bash
+# Show GPaste clipboard history in Walker and select the chosen entry.
+#
+# GPaste's daemon does the clipboard tracking: Mutter implements neither
+# wlr-data-control nor ext-data-control, so `wl-paste --watch` (and therefore
+# elephant-clipboard, cliphist, clipman, clipse) cannot work on GNOME.
+#
+# Every gpaste-client call MUST redirect stdin from /dev/null: with an
+# inherited stdin it enters its "read stdin, set clipboard" mode and prints
+# nothing, which silently yields an empty history.
+set -uo pipefail
+
+GP() { timeout 8 gpaste-client "$@" < /dev/null; }
+
+mapfile -t uuids < <(GP --oneline history | sed 's/:.*//')
+mapfile -t texts < <(GP --oneline --raw history)
+(( ${#texts[@]} )) || exit 0
+(( ${#uuids[@]} == ${#texts[@]} )) || exit 1
+
+sel=$(printf '%s\n' "${texts[@]}" | walker --dmenu -p "Clipboard") || exit 0
+[[ -n $sel ]] || exit 0
+
+# Match on value, not index, so we don't depend on Walker's index base.
+for i in "${!texts[@]}"; do
+  if [[ ${texts[i]} == "$sel" ]]; then
+    exec timeout 8 gpaste-client select "${uuids[i]}" < /dev/null
+  fi
+done
+exit 1

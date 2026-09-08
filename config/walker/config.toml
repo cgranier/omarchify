@@ -1,0 +1,62 @@
+# Explicit, but verified redundant: Walker falls back to a normal window on its
+# own when the compositor lacks wlr-layer-shell (Mutter does). A/B tested 2026-09-07
+# with as_window false vs true — no observable difference. Omabuntu never sets it.
+as_window = true
+
+force_keyboard_focus = true   # keep keyboard focus inside Walker
+selection_wrap = true         # wrap list at top/bottom
+hide_action_hints = true      # hide the action hint row
+theme = "omakub-default"
+additional_theme_location = "~/.config/walker/themes/"
+
+[placeholders]
+"default" = { input = "󰍉 Search...", list = "No Results" }
+
+[keybinds]
+quick_activate = []           # disable F1-F4 quick activation
+
+[columns]
+# Omabuntu uses 1; Walker's own default is 3. A grid is far better for
+# browsing emoji from the Super+Ctrl+E picker.
+symbols = 4
+
+[providers]
+max_results = 256
+default = [
+  "desktopapplications",
+  "menus:omarchify",  # our actions, searchable: "lock", "bluetooth", "transcode"
+  "websearch",
+]
+
+[[providers.prefixes]]
+prefix = "/"
+provider = "providerlist"
+
+[[providers.prefixes]]
+prefix = "."
+provider = "files"
+
+[[providers.prefixes]]
+prefix = ":"
+provider = "symbols"
+
+[[providers.prefixes]]
+prefix = "="
+provider = "calc"
+
+[[providers.prefixes]]
+prefix = "@"
+provider = "websearch"
+
+# kept from Walker defaults so installed providers stay reachable
+[[providers.prefixes]]
+prefix = ">"
+provider = "runner"
+
+[[providers.prefixes]]
+prefix = "!"
+provider = "todo"
+
+[[emergencies]]
+text = "Restart Walker"
+command = "systemctl --user restart app-walker@autostart.service"

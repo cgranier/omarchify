@@ -1,0 +1,44 @@
+#!/bin/bash
+# Remove a GNOME custom keybinding by slug, or list them all.
+#   omarchify-keybinding-drop           # list
+#   omarchify-keybinding-drop <slug>...
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+SCHEMA=org.gnome.settings-daemon.plugins.media-keys
+BASE=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings
+
+mapfile -t paths < <(gsettings get "$SCHEMA" custom-keybindings \
+  | grep -o "'[^']*'" | tr -d "'" || true)
+
+if (( $# == 0 )); then
+  (( ${#paths[@]} )) || { echo "No custom keybindings."; exit 0; }
+  for p in "${paths[@]}"; do
+    s="$SCHEMA.custom-keybinding:$p"
+    printf '%-22s %-24s %s\n' "$(basename "$p")" \
+      "$(gsettings get "$s" binding 2>/dev/null | tr -d "'")" \
+      "$(gsettings get "$s" command 2>/dev/null | tr -d "'")"
+  done
+  exit 0
+fi
+
+for slug in "$@"; do
+  target="$BASE/$slug/"
+  keep=()
+  found=false
+  for p in "${paths[@]}"; do
+    if [[ $p == "$target" ]]; then found=true; else keep+=("$p"); fi
+  done
+  if [[ $found == false ]]; then echo "no such keybinding: $slug" >&2; continue; fi
+  for k in name command binding; do gsettings reset "$SCHEMA.custom-keybinding:$target" "$k" 2>/dev/null || true; done
+  if (( ${#keep[@]} )); then
+    list=$(printf "'%s', " "${keep[@]}"); gsettings set "$SCHEMA" custom-keybindings "[${list%, }]"
+  else
+    gsettings set "$SCHEMA" custom-keybindings "[]"
+  fi
+  paths=("${keep[@]}")
+  echo "dropped $slug"
+done

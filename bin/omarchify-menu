@@ -1,0 +1,74 @@
+#!/bin/bash
+# A minimal Walker-driven system menu, in the spirit of omakub-menu / omarchy-menu
+# but without Omakub's theme engine. Every action is GNOME-native.
+#   omarchify-menu [system|toggle|webapp]
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+sel() { omarchify-menu-select "$@"; }
+
+gs()  { gsettings get "$1" "$2" | tr -d "'"; }
+flip() { # schema key on-label
+  local now; now=$(gs "$1" "$2")
+  [[ $now == true ]] && gsettings set "$1" "$2" false || gsettings set "$1" "$2" true
+  notify-send "$3" "now $([[ $now == true ]] && echo off || echo on)" 2>/dev/null || true
+}
+
+menu_system() {
+  case "$(sel System Lock Logout Suspend Reboot 'Shut down')" in
+    Lock)       loginctl lock-session ;;
+    Logout)     sleep 1; gnome-session-quit --logout --no-prompt ;;
+    Suspend)    systemctl suspend ;;
+    Reboot)     nohup bash -c 'sleep 2 && systemctl reboot --no-wall' >/dev/null 2>&1 & ;;
+    'Shut down') nohup bash -c 'sleep 2 && systemctl poweroff --no-wall' >/dev/null 2>&1 & ;;
+  esac
+}
+
+menu_toggle() {
+  case "$(sel Toggle 'Night Light' 'Do Not Disturb' 'Dark Mode')" in
+    'Night Light')    flip org.gnome.settings-daemon.plugins.color night-light-enabled 'Night Light' ;;
+    'Do Not Disturb') # show-banners is the inverse of DND
+                      flip org.gnome.desktop.notifications show-banners 'Banners' ;;
+    'Dark Mode')      local now; now=$(gs org.gnome.desktop.interface color-scheme)
+                      if [[ $now == prefer-dark ]]; then
+                        gsettings set org.gnome.desktop.interface color-scheme default
+                      else
+                        gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+                      fi ;;
+  esac
+}
+
+menu_webapp() {
+  case "$(sel 'Web App' Install Remove)" in
+    Install) local name url
+             name=$(omarchify-menu-input 'App name'); [[ -n ${name:-} ]] || exit 0
+             url=$(omarchify-menu-input 'URL');       [[ -n ${url:-} ]]  || exit 0
+             omarchify-webapp-install "$name" "$url" \
+               && notify-send 'Web app installed' "$name" 2>/dev/null || true ;;
+    Remove)  local apps; mapfile -t apps < <(omarchify-webapp-remove)
+             (( ${#apps[@]} )) || { notify-send 'No web apps installed' 2>/dev/null; exit 0; }
+             [[ ${apps[0]} == "No web apps installed." ]] && exit 0
+             local pick; pick=$(sel Remove "${apps[@]}")
+             [[ -n ${pick:-} ]] && omarchify-webapp-remove "$pick" ;;
+  esac
+}
+
+case "${1:-}" in
+  system) menu_system ;;
+  transcode) exec omarchify-transcode ;;
+  toggle) menu_toggle ;;
+  webapp) menu_webapp ;;
+  "")
+    case "$(sel Menu System Toggle 'Web App' Clipboard Screenshot Transcode)" in
+      System)     menu_system ;;
+      Toggle)     menu_toggle ;;
+      'Web App')  menu_webapp ;;
+      Clipboard)  exec walker-clipboard ;;
+      Screenshot) exec sh -c 'flatpak run org.flameshot.Flameshot gui' ;;
+      Transcode)  exec omarchify-transcode ;;
+    esac ;;
+  *) echo "usage: omarchify-menu [system|toggle|webapp|transcode]" >&2; exit 1 ;;
+esac

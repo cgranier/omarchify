@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Launch Walker, working around its dimension caching.
+#
+# Walker caches window dimensions on first gapplication-service activation;
+# later calls asking for a different size are silently capped to the first one.
+# So a 295-wide menu followed by an 800-wide file picker gives you a 295-wide
+# file picker. Killing Walker when the requested dimensions change is the same
+# workaround omakub-launch-walker uses (see abenz1267/walker PR #708).
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+set -uo pipefail
+
+DIMS_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/omarchify/walker-service-dims"
+
+# Elephant must be up or Walker returns nothing.
+pgrep -x elephant >/dev/null || { systemctl --user start elephant.service 2>/dev/null || elephant & }
+
+width=644; minheight=300; maxheight=300
+args=("$@")
+for i in "${!args[@]}"; do
+  case ${args[i]} in
+    --width)     width=${args[i+1]:-$width} ;;
+    --minheight) minheight=${args[i+1]:-$minheight} ;;
+    --maxheight) maxheight=${args[i+1]:-$maxheight} ;;
+  esac
+done
+
+dims_key="w${width}x${minheight}-${maxheight}"
+mkdir -p "$(dirname "$DIMS_FILE")"
+if [[ $(cat "$DIMS_FILE" 2>/dev/null) != "$dims_key" ]] && pgrep -x walker >/dev/null; then
+  pkill -x walker
+  while pgrep -x walker >/dev/null; do sleep 0.05; done
+fi
+printf '%s\n' "$dims_key" > "$DIMS_FILE"
+
+defaults=()
+[[ $* != *--width*     ]] && defaults+=(--width "$width")
+[[ $* != *--minheight* ]] && defaults+=(--minheight "$minheight")
+[[ $* != *--maxheight* && $* != *--minheight* ]] && defaults+=(--maxheight "$maxheight")
+
+exec walker "${defaults[@]}" "$@"

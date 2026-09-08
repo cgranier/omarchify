@@ -1,0 +1,35 @@
+#!/bin/bash
+# Remove web-app launchers created by omarchify-webapp-install.
+#   omarchify-webapp-remove            # list them
+#   omarchify-webapp-remove <name>...  # remove by name
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+ICON_DIR="$HOME/.local/share/applications/icons"
+DESKTOP_DIR="$HOME/.local/share/applications"
+
+# NUL-delimited throughout: app names routinely contain spaces.
+apps=()
+while IFS= read -r -d '' f; do
+  n=$(basename "$f"); apps+=("${n%.desktop}")
+done < <(grep -rlZ '^Exec=.*omarchify-launch-webapp' "$DESKTOP_DIR" --include='*.desktop' 2>/dev/null)
+
+if (( $# == 0 )); then
+  (( ${#apps[@]} )) || { echo "No web apps installed."; exit 0; }
+  printf '%s\n' "${apps[@]}" | sort
+  exit 0
+fi
+
+for name in "$@"; do
+  f="$DESKTOP_DIR/$name.desktop"
+  if [[ -f $f ]] && grep -q '^Exec=.*omarchify-launch-webapp' "$f"; then
+    rm -f "$f" "$ICON_DIR/$name.png"
+    echo "Removed '$name'."
+  else
+    echo "Not a web app launcher: $name" >&2
+  fi
+done
+command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true

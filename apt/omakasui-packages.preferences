@@ -1,0 +1,7 @@
+Package: *
+Pin: release o=omakasui
+Pin-Priority: 1
+
+Package: walker elephant elephant-* libgtk4-layer-shell0
+Pin: release o=omakasui
+Pin-Priority: 500

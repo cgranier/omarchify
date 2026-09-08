@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Walker
+Comment=Walker launcher service
+Exec=walker --gapplication-service
+Terminal=false
+StartupNotify=false

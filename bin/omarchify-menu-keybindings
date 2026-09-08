@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Show every keybinding in Walker, read live from gsettings — Omarchy's Super+K.
+# Selecting a custom binding runs its command, so it doubles as a palette.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+set -uo pipefail
+
+pretty() { # '<Super><Control>v' -> 'Super+Ctrl+V'
+  local k last rest
+  k=$(sed -e 's/<//g' -e 's/>/+/g' -e 's/Control/Ctrl/g' -e 's/Primary/Ctrl/g' <<<"$1")
+  k=${k//+slash/+\/}; k=${k//+period/+.}; k=${k//+comma/+,}
+  k=${k//+minus/+-};   k=${k//+equal/+=};  k=${k//+grave/+\`}
+  if [[ $k == *+* ]]; then
+    last=${k##*+}; rest=${k%+*}; printf '%s+%s' "$rest" "${last^}"
+  else
+    printf '%s' "${k^}"
+  fi
+}
+
+labels=(); commands=()
+add() { labels+=("$(printf '%-26s  %s' "$1" "$2")"); commands+=("${3:-}"); }
+
+# --- custom keybindings (ours) ---
+SCHEMA=org.gnome.settings-daemon.plugins.media-keys
+while read -r p; do
+  [[ -n $p ]] || continue
+  s="$SCHEMA.custom-keybinding:$p"
+  b=$(gsettings get "$s" binding 2>/dev/null | tr -d "'")
+  n=$(gsettings get "$s" name    2>/dev/null | tr -d "'")
+  c=$(gsettings get "$s" command 2>/dev/null | sed "s/^'//;s/'$//")
+  [[ -n $b ]] && add "$(pretty "$b")" "$n" "$c"
+done < <(gsettings get "$SCHEMA" custom-keybindings | grep -o "'[^']*'" | tr -d "'")
+
+# --- window manager and shell (display only) ---
+for schema in org.gnome.desktop.wm.keybindings org.gnome.shell.keybindings org.gnome.mutter.keybindings; do
+  while read -r key; do
+    val=$(gsettings get "$schema" "$key" 2>/dev/null)
+    [[ $val == "@as []" || $val == "[]" ]] && continue
+    for b in $(grep -o "'[^']*'" <<<"$val" | tr -d "'"); do
+      add "$(pretty "$b")" "${key//-/ }"
+    done
+  done < <(gsettings list-keys "$schema" 2>/dev/null | sort)
+done
+
+(( ${#labels[@]} )) || { echo "no keybindings found" >&2; exit 1; }
+
+if [[ ${1:-} == "--list" ]]; then
+  printf '%s\n' "${labels[@]}"
+  exit 0
+fi
+
+sel=$(printf '%s\n' "${labels[@]}" \
+  | omarchify-launch-walker --dmenu --width 700 --minheight 1 --maxheight 500 -p "Keybindings…" 2>/dev/null) || exit 0
+[[ -n $sel ]] || exit 0
+
+for i in "${!labels[@]}"; do
+  if [[ ${labels[i]} == "$sel" && -n ${commands[i]} ]]; then
+    exec setsid sh -c "${commands[i]}"
+  fi
+done

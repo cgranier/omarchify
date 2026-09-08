@@ -1,0 +1,10 @@
+#!/bin/bash
+# Ask for a line of text with Walker (its --inputonly dmenu mode).
+#   omarchify-menu-input <prompt>
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+prompt=${1:?usage: omarchify-menu-input <prompt>}
+: | omarchify-launch-walker --dmenu --inputonly --width 400 -p "$prompt…" 2>/dev/null

@@ -1,0 +1,22 @@
+#!/bin/bash
+# Pick one option with Walker. Adapted from omakub-menu-select (drops the
+# omakub-launch-walker wrapper, which exists to work around a Walker service
+# dimension-caching bug we don't carry).
+#   omarchify-menu-select <prompt> <option>... [-- walker args...]
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+(( $# >= 2 )) || { echo "usage: omarchify-menu-select <prompt> <option>... [-- walker args]" >&2; exit 1; }
+
+prompt="$1"; shift
+options=(); walker_args=()
+while (( $# > 0 )); do
+  [[ $1 == "--" ]] && { shift; walker_args=("$@"); break; }
+  options+=("$1"); shift
+done
+(( ${#options[@]} )) || { echo "no options given" >&2; exit 1; }
+
+printf '%s\n' "${options[@]}" \
+  | omarchify-launch-walker --dmenu --width 295 --minheight 1 --maxheight 300 -p "$prompt…" "${walker_args[@]}" 2>/dev/null

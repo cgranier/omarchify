@@ -1,0 +1,23 @@
+#!/bin/bash
+# Set the monospace font size for Alacritty and the GNOME interface.
+#   omarchify-font-size-set 13
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+size=${1:?usage: omarchify-font-size-set <points>}
+[[ $size =~ ^[0-9]+$ ]] || { echo "Size must be a whole number." >&2; exit 1; }
+
+if [[ -f ~/.config/alacritty/alacritty.toml ]]; then
+  sed -i "s/^size = .*$/size = $size/" ~/.config/alacritty/alacritty.toml
+  echo "alacritty: $(grep '^size = ' ~/.config/alacritty/alacritty.toml)"
+fi
+
+if command -v gsettings >/dev/null 2>&1; then
+  cur=$(gsettings get org.gnome.desktop.interface monospace-font-name | tr -d "'")
+  family=${cur% *}
+  gsettings set org.gnome.desktop.interface monospace-font-name "$family $size"
+  echo "gnome:     monospace-font-name = $family $size"
+fi

@@ -1,0 +1,21 @@
+#!/bin/bash
+# Launch a URL as a standalone web-app window.
+# Adapted from omarchy-launch-webapp: drops `uwsm-app` (a Hyprland/uwsm session
+# helper with no GNOME equivalent) and picks the browser directly.
+# Needs a Chromium-family browser — Firefox has no equivalent --app mode.
+# omarchify: resolve siblings regardless of caller PATH — ~/.local/bin is NOT
+# in the GNOME session PATH, so keybinding-launched scripts cannot find them.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+
+set -euo pipefail
+
+url=${1:?usage: omarchify-launch-webapp <url> [extra browser args...]}
+
+for b in chromium chromium-browser google-chrome brave-browser microsoft-edge vivaldi; do
+  if command -v "$b" >/dev/null 2>&1; then
+    exec setsid "$b" --app="$url" "${@:2}"
+  fi
+done
+
+echo "omarchify-launch-webapp: no Chromium-family browser found (need --app support)." >&2
+exit 1

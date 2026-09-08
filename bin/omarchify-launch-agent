@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Open the default coding agent in a terminal, like Omarchy's Super+Ctrl+Shift+A.
+# Any arguments are passed through to the agent.
+PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd):$HOME/.local/bin:$PATH"
+set -euo pipefail
+
+agent=$(omarchify-default-agent)
+if ! command -v "$agent" >/dev/null; then
+  notify-send "Omarchify" "Default agent '$agent' is not installed" 2>/dev/null || true
+  exit 1
+fi
+# Start in the most recent project dir if one is recorded, else $HOME.
+dir="${OMARCHIFY_AGENT_DIR:-$HOME}"
+exec setsid alacritty --working-directory "$dir" -e "$agent" "$@"

@@ -70,6 +70,22 @@ TERMINAL=ghostty BROWSER=chromium install/40-gnome-settings.sh
 Unset values are auto-detected (`alacritty` → `ghostty` → `kitty` →
 `gnome-terminal`, and so on).
 
+## Shell functions
+
+`shell/functions.zsh` is opt-in — `source` it from your `~/.zshrc` if you want it:
+
+| | |
+|---|---|
+| `fip` / `dip` / `lip` | forward remote ports to localhost over SSH, so `localhost:3000` reaches `host:3000` with the secure-context privileges web sockets need |
+| `rsw` / `lsw` / `dsw` | rsync a directory to a remote whenever it changes (needs `inotify-tools`) |
+| `gwa` / `gwd` | create a git worktree beside the repo and jump in; remove the one you're in |
+| `compress` / `decompress` | tar.gz shorthand |
+
+It also aliases `bat` and `fd` to Ubuntu's `batcat` and `fdfind` if the real ones
+aren't installed. Only functions Omarchy has that a typical setup lacks are
+included; read the header before sourcing, since zsh function/alias collisions
+fail loudly.
+
 ## Read this before debugging anything
 
 **Mutter implements far fewer Wayland protocols than wlroots or KWin, and the

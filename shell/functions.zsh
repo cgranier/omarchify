@@ -1,12 +1,19 @@
-# Shell functions ported from Omarchy's default/bash/fns.
+# Shell functions ported from Omarchy's default/bash/fns. zsh and bash compatible.
 #
-# NOT SOURCED ANYWHERE YET. To try them:  source ~/dotfiles/omarchify/shell/functions.zsh
-# During the dotfiles revamp these should move into home/.zshrc_shared (or be
-# sourced from it). They are zsh/bash compatible.
+# Nothing sources this for you — it is opt-in, since these names may collide with
+# what you already have. Try it in the current shell:
 #
-# Only functions with no equivalent in .zshrc_shared are included — `extract`,
-# `take`, `up`, `ssha`, `tls`, `ta`, `tp` and the fzf helpers already cover the
-# rest of Omarchy's set.
+#     source /path/to/omarchify/shell/functions.zsh
+#
+# To keep it, add that line to your ~/.zshrc (or ~/.bashrc).
+#
+# NAME COLLISIONS: zsh refuses to define a function over an existing alias, and
+# fails at *parse* time — one collision kills this whole file and every function
+# after it. oh-my-zsh's git plugin is the usual culprit. Check before adding:
+#
+#     zsh -ic 'alias NAME; whence -w NAME'
+#
+# Omarchy's `ga`/`gd` are `gwa`/`gwd` here for exactly that reason.
 
 # --- SSH port forwarding ------------------------------------------------------
 # Forward remote ports to localhost, so localhost:3000 reaches nyc-dev:3000 with

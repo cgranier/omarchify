@@ -46,8 +46,8 @@ cd omarchify
 ./install.sh
 ```
 
-Then log out and back in, so the Walker autostart entry and the GPaste extension
-load.
+Then log out and back in, so the Walker user service and the GPaste extension
+start.
 
 `install/60-omawrite.sh` is optional and not run by `install.sh` — it builds
 [Omawrite](https://github.com/omacom/omawrite), Omarchy's Markdown writing app,

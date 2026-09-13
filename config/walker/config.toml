@@ -59,4 +59,4 @@ provider = "todo"
 
 [[emergencies]]
 text = "Restart Walker"
-command = "systemctl --user restart app-walker@autostart.service"
+command = "systemctl --user restart walker.service"

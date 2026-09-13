@@ -1,0 +1,16 @@
+[Unit]
+# Replaces an autostart .desktop entry. GNOME wraps those in a transient
+# app-gnome-NAME-PID.scope, and a scope cannot carry Restart= — systemd has no
+# command to re-run. Omabuntu ships a drop-in for app-walker@autostart.service,
+# which is never the unit GNOME actually creates, so it has no effect.
+Description=Walker launcher service
+PartOf=graphical-session.target
+After=graphical-session.target elephant.service
+
+[Service]
+ExecStart=/usr/bin/walker --gapplication-service
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

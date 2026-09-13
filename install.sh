@@ -37,7 +37,7 @@ install/50-link-configs.sh
 
 cat <<'DONE'
 
-Done. Log out and back in for the autostart entry and GNOME extension to load.
+Done. Log out and back in so the Walker service and GPaste extension start.
 
   Super+Space          launcher
   Super+K              every keybinding (selecting one runs it)
